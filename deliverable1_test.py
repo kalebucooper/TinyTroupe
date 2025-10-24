@@ -47,24 +47,30 @@ for agent in [jordan, ava, liam]:
 # Run 2 rounds of conversation
 world.run(2)
 
-# === Step 5: Extract and save conversation (clean text only) ===
+# === Step 5: Extract and save conversation (final patched version) ===
 conversation_log = []
 
 for agent in [jordan, ava, liam]:
     if hasattr(agent, "episodic_memory") and agent.episodic_memory:
         memories = agent.episodic_memory.retrieve_all()
         for memory in memories:
+            # 1️⃣ Check for normal TALK actions
             if isinstance(memory, dict):
-                action = memory.get("action", {})
-                if isinstance(action, dict) and action.get("type") == "TALK":
-                    content = action.get("content", "").strip()
-                    if content:
-                        conversation_log.append(f"**{agent.name}**: {content}\n")
+                if "action" in memory and isinstance(memory["action"], dict):
+                    act = memory["action"]
+                    if act.get("type") == "TALK" and act.get("content"):
+                        conversation_log.append(f"**{agent.name}**: {act['content'].strip()}\n")
+                # 2️⃣ Check for nested stimuli (if dialogue stored there)
+                if "stimuli" in memory and isinstance(memory["stimuli"], list):
+                    for s in memory["stimuli"]:
+                        if isinstance(s, dict) and "content" in s and s["content"].strip():
+                            conversation_log.append(f"**{agent.name}** (stimulus): {s['content'].strip()}\n")
 
-# Save to Markdown file
+# === Save Markdown file ===
 with open("conversation_log.md", "w") as f:
     f.write("# TinyTroupe Simulation Log (Deliverable 1)\n\n")
-    f.write(f"**Topic:** {topic.strip()}\n\n---\n\n")
+    f.write(f"**Topic:** {topic.strip()}\n\n")
+    f.write("---\n\n")
     if conversation_log:
         f.write("\n".join(conversation_log))
     else:
